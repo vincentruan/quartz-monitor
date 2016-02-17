@@ -23,23 +23,24 @@ org.quartz.scheduler.jmx.export = true
 
 2）配置应用容器支持JMX
 
-A) tomcat
+A) tomcat  
 比如我使用的是TOMCAT，并且在Linux上，我需要往catalina.sh中加入：
-```xml
+```shell
 JAVA_OPTS='-Dcom.sun.management.jmxremote=true -Dcom.sun.management.jmxremote.port=2911 -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.authenticate=false -Dorg.quartz.scheduler.jmx.export=true'
 ```
-B) weblogic
+B) weblogic  
 使用的是weblogic时，只需开启t3协议(weblogic默认t3/JMX已经开启，如果没开启，请参阅官方相关的administrator文档)
 
 3）配置Quartz-Monitor
 
-运行方法：
-(1)tomcat服务器运行
-将quartz-monitor放入tomcat，配置好远程quartz的jmx信息，如jmx端口和ip，即可使用。
-（2）maven整合tomcat7插件运行
+运行方法：  
+A)tomcat服务器运行  
+将quartz-monitor放入tomcat，配置好远程quartz的jmx信息，如jmx端口和ip，即可使用。  
+B)maven整合tomcat7插件运行  
 mvn tomcat7:run
 
-===============
-Forked from:
-https://code.google.com/archive/p/jwatch/
-https://github.com/xishuixixia/quartz-monitor
+==============
+See also  
+https://code.google.com/archive/p/jwatch/  
+https://github.com/royrusso/jwatch  
+https://github.com/xishuixixia/quartz-monitor  
