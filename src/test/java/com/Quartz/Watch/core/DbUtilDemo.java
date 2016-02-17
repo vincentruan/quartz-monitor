@@ -7,6 +7,7 @@ import org.apache.commons.dbutils.handlers.ArrayHandler;
 import org.apache.commons.dbutils.handlers.ArrayListHandler;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
+import org.junit.After;
 import org.junit.Test;
 
 import com.quartz.monitor.conf.QuartzConfig;
@@ -71,5 +72,10 @@ public class DbUtilDemo {
 	public void test3() throws Exception {
 		QuartzConfigService quartzConfigService = new QuartzConfigService();
 		System.out.println(quartzConfigService.empty());
+	}
+
+	@After
+	public void destory() {
+		DBUtil.close();
 	}
 }

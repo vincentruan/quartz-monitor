@@ -19,22 +19,23 @@ import org.apache.struts2.ServletActionContext;
  * @author yangliang
  * @version 1.0
  * @created 2011-8-25 下午01:18:41
- * @history 
+ * @history
  * @see
  */
 public class JsonUtil {
-	public static void  toJson(String result) throws Exception{
-		
-		// 设置客户端浏览器输出
-		HttpServletResponse response = ServletActionContext.getResponse();
-		response.setContentType("application/json; charset=utf-8");
-		
-		//取消浏览器缓存
-		response.setHeader("Cache-Control", "no-cache");
 
-		PrintWriter out = response.getWriter();
-		out.write(result);
-		out.flush();
-		out.close();
-	}
+    public static void write2Response(String result) throws Exception {
+
+        // 设置客户端浏览器输出
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setContentType("application/json; charset=utf-8");
+
+        //取消浏览器缓存
+        response.setHeader("Cache-Control", "no-cache");
+
+        PrintWriter out = response.getWriter();
+        out.write(result);
+        out.flush();
+        out.close();
+    }
 }

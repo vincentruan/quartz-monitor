@@ -85,8 +85,6 @@ public class QuartzConnectServiceImpl implements QuartzConnectService {
 	
 	/**
 	 * 获取tomcat的授权环境
-	 * @param userName
-	 * @param password
 	 * @return
 	 */
 	private Map<String, String[]> getTomcatCredentialEnvironment(QuartzConfig config) {

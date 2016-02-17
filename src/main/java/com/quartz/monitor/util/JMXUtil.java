@@ -8,7 +8,7 @@ import javax.management.MBeanServerConnection;
 import javax.management.openmbean.CompositeDataSupport;
 import javax.management.remote.JMXServiceURL;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.quartz.monitor.conf.QuartzConfig;
 import com.quartz.monitor.constants.WeblogicConstant;
@@ -17,9 +17,9 @@ import com.quartz.monitor.object.QuartzInstance;
 
 public class JMXUtil {
 	
-	public static final String QUARTZ_RUNTIME_CONTAINER_WEBLOGIC = "weblogic";
+	//public static final String QUARTZ_RUNTIME_CONTAINER_WEBLOGIC = "weblogic";
 	
-	public static final String QUARTZ_RUNTIME_CONTAINER_TOMCAT = "tomcat";
+	//public static final String QUARTZ_RUNTIME_CONTAINER_TOMCAT = "tomcat";
 	
 	private static Properties properties = PropertyReader.getProperties(JMXUtil.class.getClass(), "quartz-container.properties");
 	
@@ -51,7 +51,7 @@ public class JMXUtil {
 		return properties.getProperty(key, defaultVal);
 	}
 	
-	public static final String[] QUARTZ_RUNTIME_CONTAINER = {QUARTZ_RUNTIME_CONTAINER_WEBLOGIC, QUARTZ_RUNTIME_CONTAINER_TOMCAT};
+	//public static final String[] QUARTZ_RUNTIME_CONTAINER = {QUARTZ_RUNTIME_CONTAINER_WEBLOGIC, QUARTZ_RUNTIME_CONTAINER_TOMCAT};
 
 	public static JMXServiceURL createQuartzInstanceConnection(QuartzConfig quartzConfig)
 			throws MalformedURLException {

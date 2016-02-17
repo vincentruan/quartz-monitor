@@ -1,5 +1,7 @@
 package com.quartz.monitor.db;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -7,6 +9,7 @@ import java.sql.SQLException;
 
 import javax.sql.DataSource;
 
+import org.apache.commons.dbcp2.BasicDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,7 +20,7 @@ public abstract class DBUtil {
 	private static DataSource dataSource = null;
 
 	static {
-		dataSource = DataSourceInit.getBasicDataSource();
+		dataSource = DataSourceBuilder.buildBasicDataSource();
 	}
 
 	public static DataSource getDataSource() {
@@ -34,12 +37,18 @@ public abstract class DBUtil {
 		return conn;
 	}
 
-	public static void setDataSource(DataSource dataSource) {
-		if (null == dataSource) {
-			DBUtil.dataSource = DataSourceInit.getBasicDataSource();
-		} else {
-			DBUtil.dataSource = dataSource;
+	public static void setDataSource(DataSource _dataSource) {
+        if(null != dataSource) {
+            log.warn("Unable to set datasource, because datasource has already had value!");
+            return;
+        }
+
+		if (null == _dataSource) {
+			dataSource = DataSourceBuilder.buildHikariDataSource();
+			return;
 		}
+
+        dataSource = _dataSource;
 	}
 
 	public static void closeConn(Connection conn, PreparedStatement ps,
@@ -60,5 +69,29 @@ public abstract class DBUtil {
 			conn = null;
 		}
 	}
+
+    public static void close() {
+        if(null == dataSource) {
+            log.debug("Datasource is null, not need to close.");
+            return;
+        }
+
+        if(dataSource instanceof Closeable) {
+            try {
+                ((Closeable) dataSource).close();
+            } catch (IOException e) {
+                log.error("Failed to close datasource", e);
+            }
+            return;
+        }
+
+        if(dataSource instanceof BasicDataSource) {
+            try {
+                ((BasicDataSource) dataSource).close();
+            } catch (SQLException e) {
+                log.error("Failed to close datasource", e);
+            }
+        }
+    }
 	
 }

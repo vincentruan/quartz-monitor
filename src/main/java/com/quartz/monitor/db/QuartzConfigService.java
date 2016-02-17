@@ -17,15 +17,12 @@ public class QuartzConfigService extends BasedDaoSupport<QuartzConfig> {
 
 	/**
 	 * 查询所有的JMX实例
-	 * @return
 	 */
 	public List<QuartzConfig> queryAllQuartzConfigs() {
 		
 		String sql = "select id, uuid, server_container container, instance_name name, host, port, jmx_username username, jmx_password password from quartz_config";
 		try {
-			List<QuartzConfig> quartzConfigs = super.queryList(sql, QuartzConfig.class);
-			
-			return quartzConfigs;
+            return super.queryList(sql, QuartzConfig.class);
 		} catch (SQLException e) {
 			log.error("Unable to query all quartz configs", e);
 		}
@@ -35,10 +32,8 @@ public class QuartzConfigService extends BasedDaoSupport<QuartzConfig> {
 	public QuartzConfig queryQuartzConfigsByUUID(String uuid) {
 		try {
 			String sql = "select id, uuid, server_container container, instance_name name, host, port, jmx_username username, jmx_password password from quartz_config where uuid=?";
-			
-			QuartzConfig quartzConfig = super.query(sql, QuartzConfig.class, uuid);
-			
-			return quartzConfig;
+
+            return super.query(sql, QuartzConfig.class, uuid);
 		} catch (SQLException e) {
 			log.error("Unable to query quartz configs by UUID ======>>>>>>" + uuid, e);
 		}
@@ -147,7 +142,11 @@ public class QuartzConfigService extends BasedDaoSupport<QuartzConfig> {
 		
 		return 0;
 	}
-	
+
+	/**
+	 * 清空表
+	 * @return
+	 */
 	public int empty() {
 		
 		String sql = "delete from quartz_config";

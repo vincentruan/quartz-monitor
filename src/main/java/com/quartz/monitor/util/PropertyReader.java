@@ -166,7 +166,6 @@ public  abstract class PropertyReader {
 	 * 获取类加载器
 	 * @param cls
 	 * @return
-	 * @author 张宪新
 	 */
 	public static ClassLoader getClassLoader(Class<?> cls) {
 		ClassLoader cl = null;
@@ -182,7 +181,7 @@ public  abstract class PropertyReader {
 		if (cl == null) {
             throw new IllegalStateException("Cannot determine classloader");
         }
-		_log.debug("ClassLoader = {}", cl);
+		_log.debug("ClassLoader = {}", cls.getCanonicalName());
 		return cl;
 	}
 }

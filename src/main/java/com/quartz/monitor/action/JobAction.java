@@ -1,15 +1,6 @@
 package com.quartz.monitor.action;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.apache.log4j.Logger;
-
-import com.google.gson.Gson;
+import com.alibaba.fastjson.JSON;
 import com.opensymphony.xwork2.ActionSupport;
 import com.quartz.monitor.core.JobContainer;
 import com.quartz.monitor.object.Job;
@@ -18,6 +9,9 @@ import com.quartz.monitor.object.Result;
 import com.quartz.monitor.object.Scheduler;
 import com.quartz.monitor.util.JsonUtil;
 import com.quartz.monitor.util.Tools;
+import org.apache.log4j.Logger;
+
+import java.util.*;
 
 public class JobAction extends ActionSupport {
 
@@ -49,7 +43,7 @@ public class JobAction extends ActionSupport {
 			Result result = new Result();
 			result.setMessage("请先配置Quartz");
 			result.setCallbackType("");
-			JsonUtil.toJson(new Gson().toJson(result));
+			JsonUtil.write2Response(JSON.toJSONString(result));
 			return null;
 		}
 		List<Scheduler> schedulers = instance.getSchedulerList();
@@ -91,7 +85,7 @@ public class JobAction extends ActionSupport {
 		result.setStatusCode("200");
 		result.setMessage("执行成功");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -106,7 +100,7 @@ public class JobAction extends ActionSupport {
 				instance.getSchedulerByName(job.getSchedulerName()), job);
 		Result result = new Result();
 		result.setMessage("删除成功");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -121,7 +115,7 @@ public class JobAction extends ActionSupport {
 		Result result = new Result();
 		result.setMessage("Job已暂停");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -137,7 +131,7 @@ public class JobAction extends ActionSupport {
 		Result result = new Result();
 		result.setMessage("Job已恢复");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -173,7 +167,7 @@ public class JobAction extends ActionSupport {
 		Result result = new Result();
 		result.setMessage("添加成功");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 

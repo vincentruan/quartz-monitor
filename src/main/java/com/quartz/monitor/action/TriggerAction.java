@@ -1,23 +1,17 @@
 package com.quartz.monitor.action;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-
-import org.apache.log4j.Logger;
-
-import com.google.gson.Gson;
+import com.alibaba.fastjson.JSON;
 import com.opensymphony.xwork2.ActionSupport;
 import com.quartz.monitor.core.JobContainer;
 import com.quartz.monitor.core.TriggerContainer;
-import com.quartz.monitor.object.Job;
-import com.quartz.monitor.object.QuartzInstance;
-import com.quartz.monitor.object.Result;
-import com.quartz.monitor.object.Scheduler;
-import com.quartz.monitor.object.Trigger;
-import com.quartz.monitor.object.TriggerInput;
+import com.quartz.monitor.object.*;
 import com.quartz.monitor.util.JsonUtil;
 import com.quartz.monitor.util.Tools;
+import org.apache.log4j.Logger;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 public class TriggerAction extends ActionSupport {
 
@@ -88,7 +82,7 @@ public class TriggerAction extends ActionSupport {
 		result.setMessage("添加成功");
 		result.setNavTabId("triggerList");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		
 		
 		return null;
@@ -108,7 +102,7 @@ public class TriggerAction extends ActionSupport {
 		result.setMessage("删除成功");
 		result.setNavTabId("triggerList");
 		result.setCallbackType("");
-		JsonUtil.toJson(new Gson().toJson(result));
+		JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 

@@ -1,11 +1,6 @@
 package com.quartz.monitor.action;
 
-import java.util.Map;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.google.gson.Gson;
+import com.alibaba.fastjson.JSON;
 import com.opensymphony.xwork2.ActionSupport;
 import com.quartz.monitor.conf.QuartzConfig;
 import com.quartz.monitor.core.QuartzConnectService;
@@ -16,6 +11,10 @@ import com.quartz.monitor.object.QuartzInstance;
 import com.quartz.monitor.object.Result;
 import com.quartz.monitor.util.JsonUtil;
 import com.quartz.monitor.util.Tools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 public class ConfigAction extends ActionSupport {
 
@@ -56,7 +55,7 @@ public class ConfigAction extends ActionSupport {
 		Result result = new Result();
 		result.setNavTabId("main");
 		result.setMessage("添加成功");
-		JsonUtil.toJson(new Gson().toJson(result));
+        JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -96,7 +95,7 @@ public class ConfigAction extends ActionSupport {
 
 		Result result = new Result();
 		result.setMessage("修改成功");
-		JsonUtil.toJson(new Gson().toJson(result));
+        JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 
@@ -110,7 +109,7 @@ public class ConfigAction extends ActionSupport {
 
 		Result result = new Result();
 		result.setMessage("删除成功");
-		JsonUtil.toJson(new Gson().toJson(result));
+        JsonUtil.write2Response(JSON.toJSONString(result));
 		return null;
 	}
 

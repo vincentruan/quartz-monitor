@@ -4,6 +4,7 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 
+import com.quartz.monitor.util.Tools;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -25,9 +26,15 @@ public class QuartzJMXAdapterImplTest
     @Before
     public void setUpBeforeClass() throws Exception
     {
+        String uuid = Tools.generateUUID();
+        String container = "tomcat";
+        String host = "localhost";
+        int port = 8080;
+        String userName = null;
+        String password = null;
         try
         {
-            config = new QuartzConfig("11", "", "127.0.0.1", 2911, "", "");
+            config = new QuartzConfig(uuid, container, host, port, userName, password);
             QuartzConnectService quartzConnectService = new QuartzConnectServiceImpl();
             quartzInstance = quartzConnectService.initInstance(config);
             System.out.println("------------");
