@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quartz实例列表</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            padding-top: 20px;
+        }
+        .container {
+            max-width: 960px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Quartz实例列表</h4>
+                    <a href="/quartz-monitor/" class="btn btn-light">返回首页</a>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>UUID</th>
+                                <th>容器类型</th>
+                                <th>实例名称</th>
+                                <th>主机地址</th>
+                                <th>端口</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="config : ${configs}">
+                                <td th:text="${config.id}">1</td>
+                                <td th:text="${config.uuid}">UUID</td>
+                                <td th:text="${config.container}">tomcat</td>
+                                <td th:text="${config.name}">Instance</td>
+                                <td th:text="${config.host}">localhost</td>
+                                <td th:text="${config.port}">8080</td>
+                                <td>
+                                    <a th:href="@{/config/show(uuid=${config.uuid})}" class="btn btn-sm btn-info">编辑</a>
+                                    <button th:attr="data-uuid=${config.uuid}" class="btn btn-sm btn-danger delete-btn">删除</button>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(configs)}">
+                                <td colspan="7" class="text-center">暂无数据</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(function() {
+        $('.delete-btn').on('click', function() {
+            if (confirm('确定要删除此实例吗？')) {
+                var uuid = $(this).data('uuid');
+                
+                $.ajax({
+                    url: '/quartz-monitor/config/delete',
+                    type: 'POST',
+                    data: { uuid: uuid },
+                    dataType: 'json',
+                    success: function(result) {
+                        if (result.code === 200) {
+                            alert('删除成功');
+                            location.reload();
+                        } else {
+                            alert('删除失败: ' + result.message);
+                        }
+                    },
+                    error: function() {
+                        alert('请求出错');
+                    }
+                });
+            }
+        });
+    });
+</script>
+</body>
+</html> 

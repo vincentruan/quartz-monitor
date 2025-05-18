@@ -1,11 +1,16 @@
 package com.quartz.monitor.util;
 
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.quartz.monitor.object.Job;
 import com.quartz.monitor.object.Trigger;
@@ -13,7 +18,46 @@ import com.quartz.monitor.object.Trigger;
 public class QuartzUtil
 {
 	
-  private static Logger log = Logger.getLogger(QuartzUtil.class);
+	private static final Logger log = LoggerFactory.getLogger(QuartzUtil.class);
+	
+	/**
+	 * 获取本机IP
+	 * @return
+	 */
+	public static String getIP() {
+		String ip = "127.0.0.1";
+	    try{
+	      Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+	      while (interfaces.hasMoreElements()) {
+	        NetworkInterface ni = interfaces.nextElement();
+	        Enumeration<InetAddress> addresses = ni.getInetAddresses();
+	        while (addresses.hasMoreElements()) {
+	          InetAddress addr = addresses.nextElement();
+	          String aip = addr.getHostAddress();
+	          if (!"127.0.0.1".equals(aip) && aip.indexOf(":") == -1) {
+	            ip = aip;
+	          }
+	        }
+	      }
+	      if (ip.indexOf("/") > 0) {
+	        ip = ip.split("/")[0];
+	      }
+	    } catch (Exception e){
+	      log.error("获取本机IP失败: " + e.getMessage());
+	    }
+	    
+	    return ip;
+	}
+	
+	/**
+	 * 获取日期格式化工具
+	 * @param pattern
+	 * @return
+	 */
+	public static SimpleDateFormat getSimpleDateFormat(String pattern) {
+		SimpleDateFormat sdf = new SimpleDateFormat(pattern);
+		return sdf;
+	}
 	
    public static Date getNextFireTimeForJob(List<Trigger> triggers)
    {

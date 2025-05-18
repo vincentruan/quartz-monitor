@@ -1,0 +1,45 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /quartz-monitor
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://go.db.i:3306/app_quartz_monitor?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: app_quartz_monitor
+    password: +_QsL"[mtrt5fsrZ6O
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-test-query: SELECT 1
+  
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org.quartz.scheduler.instanceName: QuartzMonitorScheduler
+      org.quartz.scheduler.instanceId: AUTO
+      org.quartz.jobStore.class: org.quartz.impl.jdbcjobstore.JobStoreTX
+      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+      org.quartz.jobStore.useProperties: false
+      org.quartz.jobStore.tablePrefix: QRTZ_
+      org.quartz.threadPool.class: org.quartz.simpl.SimpleThreadPool
+      org.quartz.threadPool.threadCount: 10
+      org.quartz.threadPool.threadPriority: 5
+      org.quartz.threadPool.threadsInheritContextClassLoaderOfInitializingThread: true
+
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+    encoding: UTF-8
+    mode: HTML
+
+logging:
+  level:
+    root: INFO
+    com.quartz.monitor: DEBUG
+    org.springframework.web: INFO
+    org.hibernate: ERROR 

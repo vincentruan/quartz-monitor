@@ -10,6 +10,7 @@ public class TriggerInput {
 	private Integer dateFlag;
 	private String cron;
 	private String description;
+	private String jobId;
 	
 	
 	public String getName() {
@@ -47,5 +48,11 @@ public class TriggerInput {
 	}
 	public void setDescription(String description) {
 		this.description = description;
+	}
+	public String getJobId() {
+		return jobId;
+	}
+	public void setJobId(String jobId) {
+		this.jobId = jobId;
 	}
 }

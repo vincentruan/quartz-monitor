@@ -38,4 +38,11 @@ public interface QuartzConnectService {
 	 * @throws javax.management.MalformedObjectNameException
 	 */
 	public QuartzInstance initInstance(QuartzConfig config) throws Exception;
+	
+	/**
+	 * 关闭与Quartz实例的连接
+	 * 
+	 * @param quartzInstance
+	 */
+	public void shutdown(QuartzInstance quartzInstance);
 }

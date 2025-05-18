@@ -1,2 +1,5 @@
 /doc
 /target/
+
+/quartz-monitor-vue/node_modules/
+/quartz-monitor-vue/dist/

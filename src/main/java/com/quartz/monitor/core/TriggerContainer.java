@@ -18,4 +18,12 @@ public class TriggerContainer {
 	public static void removeTriggerById(String uuid){
 		triggerMap.remove(uuid);
 	}
+	
+	public static int getTriggerCount() {
+		return triggerMap.size();
+	}
+	
+	public static Map<String, Trigger> getTriggerMap() {
+		return triggerMap;
+	}
 }

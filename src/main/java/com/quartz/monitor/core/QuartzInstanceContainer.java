@@ -1,6 +1,8 @@
 package com.quartz.monitor.core;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -19,18 +21,29 @@ public class QuartzInstanceContainer {
 	public static Map<String, QuartzInstance> getQuartzInstanceMap() {
 		return Collections.unmodifiableMap(quartzInstanceMap);
 	}
+	
+	public static List<QuartzInstance> getAllQuartzInstance() {
+		return new ArrayList<>(quartzInstanceMap.values());
+	}
+	
+	public static QuartzInstance getQuartzInstanceById(String uuid) {
+		return quartzInstanceMap.get(uuid);
+	}
 
 	public static void removeQuartzInstance(String uuid) {
 		quartzInstanceMap.remove(uuid);
 	}
 
 	public static void addQuartzConfig(QuartzConfig config) {
-
 		configMap.put(config.getUuid(), config);
 	}
 
 	public static Map<String, QuartzConfig> getConfigMap() {
 		return Collections.unmodifiableMap(configMap);
+	}
+	
+	public static List<QuartzConfig> getAllQuartzConfigs() {
+		return new ArrayList<>(configMap.values());
 	}
 
 	public static QuartzConfig getQuartzConfig(String uuid) {

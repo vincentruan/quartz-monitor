@@ -2,7 +2,6 @@ package com.quartz.monitor.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -12,12 +11,11 @@ import javax.management.ObjectName;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
-import javax.naming.Context;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.quartz.monitor.conf.QuartzConfig;
-import com.quartz.monitor.constants.WeblogicConstant;
 import com.quartz.monitor.object.QuartzInstance;
 import com.quartz.monitor.object.Scheduler;
 import com.quartz.monitor.util.JMXUtil;
@@ -29,7 +27,8 @@ import com.quartz.monitor.util.JMXUtil;
  * 
  */
 public class QuartzConnectServiceImpl implements QuartzConnectService {
-	static Logger log = Logger.getLogger(QuartzConnectServiceImpl.class);
+	
+	private static final Logger log = LoggerFactory.getLogger(QuartzConnectServiceImpl.class);
 
 	@Override
 	public QuartzInstance initInstance(QuartzConfig config) throws Exception {
@@ -44,6 +43,7 @@ public class QuartzConnectServiceImpl implements QuartzConnectService {
 		QuartzInstance quartzInstance = new QuartzInstance();
 		quartzInstance.setMBeanServerConnection(connection);
 		quartzInstance.setJmxConnector(connector);
+		quartzInstance.setUuid(config.getUuid());
 
 		List<Scheduler> schList = new ArrayList<Scheduler>();
 		for (ObjectName objectName : names) // for each scheduler.
@@ -65,42 +65,26 @@ public class QuartzConnectServiceImpl implements QuartzConnectService {
 		quartzInstance.setSchedulerList(schList);
 		return quartzInstance;
 	}
-	
-	public Map<String, ?> getCredentialEnvironment(QuartzConfig config) {
-		
-		String weblogic = JMXUtil.get("container.runtimeserver.quartz.weblogic", "weblogic");
-		String tomcat = JMXUtil.get("container.runtimeserver.quartz.tomcat", "tomcat");
-		
-		String configContainer = config.getContainer();
-		if(configContainer.equals(weblogic)) {
-			return this.getWeblogicCredentialEnvironment(config);
+
+	@Override
+	public void shutdown(QuartzInstance quartzInstance) {
+		try {
+			if (quartzInstance != null) {
+				JMXConnector connector = quartzInstance.getJmxConnector();
+				if (connector != null) {
+					connector.close();
+				}
+			}
+		} catch (Exception ex) {
+			log.error("Failed to shutdown jmx connector!", ex);
 		}
-		
-		if (configContainer.equals(tomcat)) {
-			return this.getTomcatCredentialEnvironment(config);
-		}
-		
-		return this.getWeblogicCredentialEnvironment(config);
 	}
 	
-	/**
-	 * 获取tomcat的授权环境
-	 * @return
-	 */
-	private Map<String, String[]> getTomcatCredentialEnvironment(QuartzConfig config) {
-		Map<String, String[]> env = new HashMap<String, String[]>();
+	private Map<String, Object> getCredentialEnvironment(QuartzConfig config) {
+		Map<String, Object> env = new HashMap<String, Object>();
 		
-		env.put(JMXConnector.CREDENTIALS, new String[] { config.getUserName(), config.getPassword()});
+		env.put(JMXConnector.CREDENTIALS, new String[] { config.getUserName(), config.getPassword() });
 		
 		return env;
-	}
-	
-	private Hashtable<String, String> getWeblogicCredentialEnvironment(QuartzConfig config) {
-		Hashtable<String, String> h = new Hashtable<String, String>();
-		h.put(Context.SECURITY_PRINCIPAL, config.getUserName());
-		h.put(Context.SECURITY_CREDENTIALS, config.getPassword());
-		h.put(JMXConnectorFactory.PROTOCOL_PROVIDER_PACKAGES, WeblogicConstant.JMX_QUARTZ_CLIENT_PKGS);
-		
-		return h;
 	}
 }
