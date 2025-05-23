@@ -1,0 +1,22 @@
+CREATE TABLE `job_container` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `uuid` varchar(64) NOT NULL COMMENT '任务唯一标识',
+  `job_name` varchar(255) NOT NULL COMMENT '任务名称',
+  `job_group` varchar(255) NOT NULL COMMENT '任务组',
+  `description` varchar(500) DEFAULT NULL COMMENT '任务描述',
+  `job_class` varchar(255) NOT NULL COMMENT '任务类名',
+  `durability` tinyint(1) DEFAULT '0' COMMENT '是否持久化',
+  `should_recover` tinyint(1) DEFAULT '0' COMMENT '是否恢复',
+  `scheduler_name` varchar(255) NOT NULL COMMENT '调度器名称',
+  `quartz_instance_id` varchar(64) NOT NULL COMMENT 'Quartz实例ID',
+  `scheduler_instance_id` varchar(64) NOT NULL COMMENT '调度器实例ID',
+  `next_fire_time` datetime DEFAULT NULL COMMENT '下次执行时间',
+  `num_triggers` int(11) DEFAULT '0' COMMENT '触发器数量',
+  `state` varchar(20) DEFAULT NULL COMMENT '任务状态',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_uuid` (`uuid`),
+  KEY `idx_job_name_group` (`job_name`,`job_group`),
+  KEY `idx_scheduler_name` (`scheduler_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务容器表';
