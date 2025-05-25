@@ -53,6 +53,7 @@ class TriggerControllerTest {
     private TriggerKey testTriggerKey;
     private CronTriggerImpl cronTrigger;
     private SimpleTriggerImpl simpleTrigger;
+    private TriggerInfo testTriggerInfo;
     
     @BeforeEach
     void setUp() throws SchedulerException, ParseException {
@@ -77,12 +78,19 @@ class TriggerControllerTest {
         simpleTrigger.setRepeatCount(5);
         simpleTrigger.setRepeatInterval(60000);
         
-        // Setup scheduler mocks
-        when(triggerService.getSchedulerByName("defaultScheduler")).thenReturn(defaultScheduler);
-        when(defaultScheduler.checkExists(testJobKey)).thenReturn(true);
-        List<? extends Trigger> triggers = Arrays.asList(cronTrigger, simpleTrigger);
-        doReturn(triggers).when(defaultScheduler).getTriggersOfJob(testJobKey);
-        when(defaultScheduler.getTriggerState(any(TriggerKey.class))).thenReturn(Trigger.TriggerState.NORMAL);
+        // Setup test TriggerInfo
+        testTriggerInfo = new TriggerInfo();
+        testTriggerInfo.setSchedulerName("defaultScheduler");
+        testTriggerInfo.setTriggerName("testTrigger");
+        testTriggerInfo.setTriggerGroup("testTriggerGroup");
+        testTriggerInfo.setJobName("testJob");
+        testTriggerInfo.setJobGroup("testGroup");
+        testTriggerInfo.setDescription("Test trigger");
+        testTriggerInfo.setTriggerType("CRON");
+        testTriggerInfo.setCronExpression("0 0 12 * * ?");
+        testTriggerInfo.setTriggerState("NORMAL");
+        testTriggerInfo.setPriority(5);
+        testTriggerInfo.setStartTime(new Date());
     }
     
     @Test
@@ -111,8 +119,8 @@ class TriggerControllerTest {
     @Test
     void testGetTriggersForJob_JobNotFound() throws SchedulerException {
         // Arrange
-        when(triggerService.getSchedulerByName("defaultScheduler")).thenReturn(defaultScheduler);
-        when(defaultScheduler.checkExists(testJobKey)).thenReturn(false);
+        when(triggerService.getTriggersForJob("defaultScheduler", "testGroup", "testJob", 0, 20))
+            .thenThrow(new JobNotFoundException("Job not found"));
         
         // Act & Assert
         assertThrows(JobNotFoundException.class, () -> 
@@ -143,8 +151,8 @@ class TriggerControllerTest {
     @Test
     void testGetTriggerDetail_NotFound() throws SchedulerException {
         // Arrange
-        when(triggerService.getSchedulerByName("defaultScheduler")).thenReturn(defaultScheduler);
-        when(defaultScheduler.getTrigger(testTriggerKey)).thenReturn(null);
+        when(triggerService.getTriggerDetail("defaultScheduler", "testTriggerGroup", "testTrigger"))
+            .thenThrow(new TriggerNotFoundException("Trigger not found"));
         
         // Act & Assert
         assertThrows(TriggerNotFoundException.class, () -> 
@@ -193,7 +201,14 @@ class TriggerControllerTest {
         request.setRepeatInterval(60000L);
         request.setStartTime(new Date());
         
-        when(triggerService.createTrigger(request)).thenReturn(testTriggerInfo);
+        // Create a simple trigger info for response
+        TriggerInfo simpleTriggerInfo = new TriggerInfo();
+        simpleTriggerInfo.setTriggerName("newSimpleTrigger");
+        simpleTriggerInfo.setTriggerType("SIMPLE");
+        simpleTriggerInfo.setRepeatCount(5);
+        simpleTriggerInfo.setRepeatInterval(60000L);
+        
+        when(triggerService.createTrigger(request)).thenReturn(simpleTriggerInfo);
         
         // Act
         TriggerInfo result = triggerController.createTrigger(request);
@@ -217,8 +232,8 @@ class TriggerControllerTest {
         request.setTriggerType("CRON");
         request.setCronExpression("invalid cron");
         
-        when(triggerService.getSchedulerByName("defaultScheduler")).thenReturn(defaultScheduler);
-        when(defaultScheduler.checkExists(testJobKey)).thenReturn(true);
+        when(triggerService.createTrigger(request))
+            .thenThrow(new IllegalArgumentException("Invalid cron expression"));
         
         // Act & Assert
         assertThrows(IllegalArgumentException.class, () -> 
@@ -262,8 +277,8 @@ class TriggerControllerTest {
     @Test
     void testDeleteTrigger_NotFound() throws SchedulerException {
         // Arrange
-        when(triggerService.getSchedulerByName("defaultScheduler")).thenReturn(defaultScheduler);
-        when(defaultScheduler.checkExists(testTriggerKey)).thenReturn(false);
+        doThrow(new TriggerNotFoundException("Trigger not found"))
+            .when(triggerService).deleteTrigger("defaultScheduler", "testTriggerGroup", "testTrigger");
         
         // Act & Assert
         assertThrows(TriggerNotFoundException.class, () -> 
@@ -298,11 +313,11 @@ class TriggerControllerTest {
     @Test
     void testSchedulerNotFound() throws SchedulerException {
         // Arrange
-        when(triggerService.getSchedulerByName("nonExistentScheduler"))
+        when(triggerService.getTriggerDetail("nonExistentScheduler", "testTriggerGroup", "testTrigger"))
             .thenThrow(new SchedulerNotFoundException("Scheduler not found"));
         
         // Act & Assert
-        assertThrows(RuntimeException.class, () -> 
+        assertThrows(SchedulerNotFoundException.class, () -> 
             triggerController.getTriggerDetail("nonExistentScheduler", "testTriggerGroup", "testTrigger")
         );
     }
