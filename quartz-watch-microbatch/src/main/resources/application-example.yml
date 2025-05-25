@@ -1,0 +1,105 @@
+# QuartzWatch示例配置
+spring:
+  application:
+    name: quartz-watch-demo
+    version: 1.0.0
+    
+  # 数据源配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/quartz_db?useSSL=false&characterEncoding=utf8&serverTimezone=UTC
+    username: root
+    password: password
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+# 服务端口
+server:
+  port: 8080
+
+# Quartz配置
+quartz:
+  # Quartz原生配置
+  properties:
+    org.quartz.scheduler.instanceName: QuartzWatchScheduler
+    org.quartz.scheduler.instanceId: AUTO
+    org.quartz.scheduler.skipUpdateCheck: true
+    org.quartz.threadPool.class: org.quartz.simpl.SimpleThreadPool
+    org.quartz.threadPool.threadCount: 10
+    org.quartz.threadPool.threadPriority: 5
+    org.quartz.jobStore.class: org.quartz.impl.jdbcjobstore.JobStoreTX
+    org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.StdJDBCDelegate
+    org.quartz.jobStore.useProperties: false
+    org.quartz.jobStore.dataSource: myDS
+    org.quartz.jobStore.tablePrefix: QRTZ_
+    org.quartz.jobStore.isClustered: true
+    org.quartz.jobStore.clusterCheckinInterval: 20000
+    org.quartz.jobStore.maxMisfiresToHandleAtATime: 20
+    org.quartz.jobStore.misfireThreshold: 60000
+    org.quartz.jobStore.txIsolationLevelSerializable: false
+    org.quartz.jobStore.acquireTriggersWithinLock: false
+  
+  # QuartzWatch扩展配置
+  watch:
+    # 节点配置
+    node:
+      # 节点ID，支持环境变量
+      id: ${HOSTNAME:}:${server.port:8080}
+      # 心跳间隔（毫秒）
+      heartbeat-interval: 5000
+      # 节点超时时间（毫秒）
+      timeout: 30000
+    
+    # 集群配置
+    cluster:
+      # 是否启用集群模式
+      enabled: true
+      # 默认分片策略：round-robin / random / 自定义策略名
+      default-sharding-strategy: round-robin
+    
+    # Misfire补偿配置
+    misfire:
+      # 是否启用Misfire补偿
+      enabled: true
+      # 触发补偿的延迟阈值（毫秒）
+      threshold: 30000
+      # 最大重试次数
+      max-retry: 3
+      # 重试间隔（毫秒）
+      retry-interval: 5000
+    
+    # 监控配置
+    monitor:
+      # 是否启用JMX监控
+      jmx-enabled: true
+      # REST API端点前缀
+      endpoint-prefix: /quartzwatch
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.quartzwatch: DEBUG
+    org.quartz: INFO
+    org.springframework.jdbc: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/quartz-watch.log
+
+# Actuator监控端点
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  metrics:
+    export:
+      prometheus:
+        enabled: true 

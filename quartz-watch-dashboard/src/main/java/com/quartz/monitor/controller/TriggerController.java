@@ -1,169 +1,173 @@
 package com.quartz.monitor.controller;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import javax.validation.Valid;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.quartz.monitor.core.JobContainer;
-import com.quartz.monitor.core.TriggerContainer;
-import com.quartz.monitor.util.Tools;
-import com.quartz.monitor.vo.Job;
-import com.quartz.monitor.vo.QuartzInstance;
-import com.quartz.monitor.vo.Scheduler;
-import com.quartz.monitor.vo.Trigger;
-import com.quartz.monitor.vo.TriggerInput;
+import com.quartz.monitor.dto.PageResult;
+import com.quartz.monitor.dto.TriggerInfo;
+import com.quartz.monitor.dto.request.CreateTriggerRequest;
+import com.quartz.monitor.dto.request.UpdateTriggerRequest;
+import com.quartz.monitor.dto.response.TriggerDetailResponse;
+import com.quartz.monitor.service.TriggerService;
 
+/**
+ * REST controller for managing Quartz triggers
+ * Supports multiple Scheduler instances
+ */
 @RestController
-@RequestMapping("/api/trigger")
+@RequestMapping("/api/triggers")
+@Validated
 public class TriggerController {
 
-    private static final Logger log = LoggerFactory.getLogger(TriggerController.class);
+    private static final Logger logger = LoggerFactory.getLogger(TriggerController.class);
     
-    /**
-     * 获取触发器列表
-     */
-    @GetMapping("/list")
-    public ResponseEntity<Map<String, Object>> list(@RequestParam("jobId") String jobId) {
-        Map<String, Object> response = new HashMap<>();
-        List<Trigger> triggerList = new ArrayList<>();
-        
-        try {
-            QuartzInstance instance = Tools.getQuartzInstance();
-            
-            Job job = JobContainer.getJobById(jobId);
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            Scheduler scheduler = instance.getSchedulerByName(job.getSchedulerName());
-            
-            List<Trigger> temp = instance.getJmxAdapter().getTriggersForJob(instance, scheduler, job.getJobName(), job.getGroup());
-            if (temp != null && temp.size() > 0) {
-                for (Trigger trigger : temp) {
-                    String id = Tools.generateUUID();
-                    trigger.setUuid(id);
-                    trigger.setJobId(jobId);
-                    TriggerContainer.addTrigger(id, trigger);
-                    triggerList.add(trigger);
-                }
-            }
-            
-            log.info("job[" + job.getJobName() + "]'s trigger size:" + triggerList.size());
-            
-            response.put("code", 200);
-            response.put("data", triggerList);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("获取触发器列表失败", e);
-            response.put("code", 500);
-            response.put("message", "获取触发器列表失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+    private final TriggerService triggerService;
+    
+    public TriggerController(TriggerService triggerService) {
+        this.triggerService = triggerService;
     }
     
     /**
-     * 添加触发器
+     * Get triggers for a specific job
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
+     * @param page page number (0-based)
+     * @param size items per page
+     * @return paginated trigger list
      */
-    @PostMapping("/add")
-    public ResponseEntity<Map<String, Object>> add(@RequestBody TriggerInput triggerInput) {
-        Map<String, Object> response = new HashMap<>();
+    @GetMapping("/job/{schedulerName}/{jobGroup}/{jobName}")
+    public PageResult<TriggerInfo> getTriggersForJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size) {
         
-        try {
-            QuartzInstance instance = Tools.getQuartzInstance();
-            
-            if (triggerInput == null) {
-                response.put("code", 400);
-                response.put("message", "触发器参数不能为空");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            Job job = JobContainer.getJobById(triggerInput.getJobId());
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            HashMap<String, Object> triggerMap = new HashMap<>();
-            triggerMap.put("name", triggerInput.getName());
-            triggerMap.put("group", triggerInput.getGroup());
-            triggerMap.put("description", triggerInput.getDescription());
-            
-            if (triggerInput.getDateFlag() == 1) {
-                triggerMap.put("startTime", triggerInput.getDate());
-                triggerMap.put("triggerClass", "org.quartz.impl.triggers.SimpleTriggerImpl");
-            } else {
-                triggerMap.put("cronExpression", triggerInput.getCron());
-                triggerMap.put("triggerClass", "org.quartz.impl.triggers.CronTriggerImpl");
-            }
-            
-            triggerMap.put("jobName", job.getJobName());
-            triggerMap.put("jobGroup", job.getGroup());
-            
-            instance.getJmxAdapter().addTriggerForJob(instance, 
-                    instance.getSchedulerByName(job.getSchedulerName()), job, triggerMap);
-            
-            log.info("add trigger for job:" + job.getJobName());
-            
-            response.put("code", 200);
-            response.put("message", "添加成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("添加触发器失败", e);
-            response.put("code", 500);
-            response.put("message", "添加触发器失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.debug("Getting triggers for job - scheduler: {}, group: {}, name: {}", 
+                     schedulerName, jobGroup, jobName);
+        
+        return triggerService.getTriggersForJob(schedulerName, jobGroup, jobName, page, size);
     }
     
     /**
-     * 删除触发器
+     * Get trigger details
+     * @param schedulerName scheduler name
+     * @param triggerGroup trigger group
+     * @param triggerName trigger name
+     * @return trigger details
      */
-    @DeleteMapping("/delete")
-    public ResponseEntity<Map<String, Object>> delete(@RequestParam("uuid") String uuid) {
-        Map<String, Object> response = new HashMap<>();
+    @GetMapping("/{schedulerName}/{triggerGroup}/{triggerName}")
+    public TriggerDetailResponse getTriggerDetail(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String triggerGroup,
+            @PathVariable @NotBlank String triggerName) {
         
-        try {
-            QuartzInstance instance = Tools.getQuartzInstance();
-            
-            Trigger trigger = TriggerContainer.getTriggerById(uuid);
-            if (trigger == null) {
-                response.put("code", 400);
-                response.put("message", "触发器不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            TriggerContainer.removeTriggerById(uuid);
-            
-            Job job = JobContainer.getJobById(trigger.getJobId());
-            instance.getJmxAdapter().deleteTrigger(instance, 
-                    instance.getSchedulerByName(job.getSchedulerName()), trigger);
-            
-            log.info("delete job[" + trigger.getJobName() + "]'s trigger!");
-            
-            response.put("code", 200);
-            response.put("message", "删除成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("删除触发器失败", e);
-            response.put("code", 500);
-            response.put("message", "删除触发器失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.debug("Getting trigger details - scheduler: {}, group: {}, name: {}", 
+                     schedulerName, triggerGroup, triggerName);
+        
+        return triggerService.getTriggerDetail(schedulerName, triggerGroup, triggerName);
+    }
+    
+    /**
+     * Create a new trigger
+     * @param request trigger creation request
+     * @return created trigger info
+     */
+    @PostMapping
+    public TriggerInfo createTrigger(@RequestBody @Valid CreateTriggerRequest request) {
+        logger.info("Creating trigger - scheduler: {}, group: {}, name: {}", 
+                    request.getSchedulerName(), request.getTriggerGroup(), request.getTriggerName());
+        
+        return triggerService.createTrigger(request);
+    }
+    
+    /**
+     * Update an existing trigger
+     * @param schedulerName scheduler name
+     * @param triggerGroup trigger group
+     * @param triggerName trigger name
+     * @param request update request
+     * @return updated trigger info
+     */
+    @PutMapping("/{schedulerName}/{triggerGroup}/{triggerName}")
+    public TriggerInfo updateTrigger(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String triggerGroup,
+            @PathVariable @NotBlank String triggerName,
+            @RequestBody @Valid UpdateTriggerRequest request) {
+        
+        logger.info("Updating trigger - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, triggerGroup, triggerName);
+        
+        return triggerService.updateTrigger(schedulerName, triggerGroup, triggerName, request);
+    }
+    
+    /**
+     * Delete a trigger
+     * @param schedulerName scheduler name
+     * @param triggerGroup trigger group
+     * @param triggerName trigger name
+     */
+    @DeleteMapping("/{schedulerName}/{triggerGroup}/{triggerName}")
+    public void deleteTrigger(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String triggerGroup,
+            @PathVariable @NotBlank String triggerName) {
+        
+        logger.info("Deleting trigger - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, triggerGroup, triggerName);
+        
+        triggerService.deleteTrigger(schedulerName, triggerGroup, triggerName);
+    }
+    
+    /**
+     * Pause a trigger
+     * @param schedulerName scheduler name
+     * @param triggerGroup trigger group
+     * @param triggerName trigger name
+     */
+    @PostMapping("/{schedulerName}/{triggerGroup}/{triggerName}/pause")
+    public void pauseTrigger(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String triggerGroup,
+            @PathVariable @NotBlank String triggerName) {
+        
+        logger.info("Pausing trigger - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, triggerGroup, triggerName);
+        
+        triggerService.pauseTrigger(schedulerName, triggerGroup, triggerName);
+    }
+    
+    /**
+     * Resume a paused trigger
+     * @param schedulerName scheduler name
+     * @param triggerGroup trigger group
+     * @param triggerName trigger name
+     */
+    @PostMapping("/{schedulerName}/{triggerGroup}/{triggerName}/resume")
+    public void resumeTrigger(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String triggerGroup,
+            @PathVariable @NotBlank String triggerName) {
+        
+        logger.info("Resuming trigger - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, triggerGroup, triggerName);
+        
+        triggerService.resumeTrigger(schedulerName, triggerGroup, triggerName);
     }
 } 

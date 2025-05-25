@@ -1,8 +1,5 @@
 package com.quartz.monitor.config.advice;
 
-import com.quartz.monitor.controller.annotation.ResponseWrapper;
-import com.quartz.monitor.vo.response.ApiResponse;
-
 import org.springframework.core.MethodParameter;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -13,15 +10,18 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
+import com.quartz.monitor.dto.response.ApiResponse;
+
 /**
- * 响应包装处理器
+ * Response wrapper handler
+ * Automatically wraps all controller responses with ApiResponse
  */
 @ControllerAdvice
 public class ResponseEntityAdvice implements ResponseBodyAdvice<Object> {
 
     @Override
     public boolean supports(@NonNull MethodParameter returnType, @NonNull Class<? extends HttpMessageConverter<?>> converterType) {
-        // 默认对所有Controller方法进行包装
+        // Apply to all controller methods by default
         return true;
     }
 

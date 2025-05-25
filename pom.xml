@@ -21,6 +21,7 @@
 
     <modules>
         <module>quartz-watch-dashboard</module>
+        <module>quartz-watch-microbatch</module>
     </modules>
 
     <dependencyManagement>
@@ -43,10 +44,10 @@
 
     <dependencies>
         <!-- Logging 依赖已由Spring Boot管理 -->
-        <dependency>
+        <!-- <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-        </dependency>
+        </dependency> -->
 
     </dependencies>
 

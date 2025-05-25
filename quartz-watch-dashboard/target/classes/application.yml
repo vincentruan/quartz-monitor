@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: quartz-monitor
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+  datasource:
+    # H2 in-memory database for development
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# Logging configuration
+logging:
+  level:
+    com.quartz.monitor: DEBUG
+    org.springframework: INFO
+    org.quartz: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Quartz properties
+quartz:
+  job-store-type: memory 

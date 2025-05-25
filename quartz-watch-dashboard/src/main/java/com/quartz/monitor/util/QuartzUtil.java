@@ -5,19 +5,20 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import com.quartz.monitor.vo.Job;
-import com.quartz.monitor.vo.Trigger;
+import com.quartz.monitor.dto.Job;
+import com.quartz.monitor.dto.Trigger;
 
 public class QuartzUtil
 {
 	
-  private static Logger log = Logger.getLogger(QuartzUtil.class);
+	private static final Logger logger = LoggerFactory.getLogger(QuartzUtil.class);
 	
    public static Date getNextFireTimeForJob(List<Trigger> triggers)
    {
-	  log.info("get Next FIre Time......");
+	  logger.info("get Next FIre Time......");
       Date theNext = null;
       if (triggers != null && triggers.size() > 0)
       {

@@ -1,300 +1,189 @@
 package com.quartz.monitor.controller;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import javax.validation.Valid;
+import javax.validation.constraints.Min;
+import javax.validation.constraints.NotBlank;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.quartz.monitor.core.JobContainer;
-import com.quartz.monitor.core.QuartzInstanceContainer;
-import com.quartz.monitor.vo.Job;
-import com.quartz.monitor.vo.QuartzInstance;
-import com.quartz.monitor.vo.Scheduler;
+import com.quartz.monitor.dto.JobInfo;
+import com.quartz.monitor.dto.PageResult;
+import com.quartz.monitor.dto.request.CreateJobRequest;
+import com.quartz.monitor.dto.request.UpdateJobRequest;
+import com.quartz.monitor.dto.response.JobDetailResponse;
+import com.quartz.monitor.service.JobService;
 
+/**
+ * REST controller for managing Quartz jobs
+ * Supports multiple Scheduler instances
+ */
 @RestController
-@RequestMapping("/api/job")
+@RequestMapping("/api/jobs")
+@Validated
 public class JobController {
 
-    private static final Logger log = LoggerFactory.getLogger(JobController.class);
+    private static final Logger logger = LoggerFactory.getLogger(JobController.class);
     
-    /**
-     * 获取任务列表
-     */
-    @GetMapping("/list")
-    public ResponseEntity<Map<String, Object>> list(
-            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
-            @RequestParam(value = "numPerPage", defaultValue = "20") Integer numPerPage) {
-        
-        Map<String, Object> response = new HashMap<>();
-        List<Job> jobList = new ArrayList<>();
-        
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            if (instance == null) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Map.of("code", 400, "message", "请先配置Quartz"));
-            }
-            
-            List<Scheduler> schedulers = instance.getSchedulerList();
-            log.info("schedulers list size:" + schedulers.size());
-            
-            if (schedulers != null && schedulers.size() > 0) {
-                for (int i = 0; i < schedulers.size(); i++) {
-                    Scheduler scheduler = schedulers.get(i);
-                    Set<Job> jobSet = instance.getJmxAdapter().queryAllJobs(instance, scheduler);
-                    for (Job job : jobSet) {
-                        String id = UUID.randomUUID().toString();
-                        job.setUuid(id);
-                        JobContainer.addJob(id, job);
-                        jobList.add(job);
-                    }
-                }
-            }
-            
-            int total = jobList.size();
-            int pageCount = (total + numPerPage - 1) / numPerPage; // 计算总页数
-            if (pageNum < 1) {
-                pageNum = 1;
-            }
-            if (pageNum > pageCount) {
-                pageNum = pageCount;
-            }
-            
-            // 计算分页 (如果需要)
-            int fromIndex = (pageNum - 1) * numPerPage;
-            int toIndex = Math.min(fromIndex + numPerPage, total);
-            
-            List<Job> pageData = fromIndex < total ? jobList.subList(fromIndex, toIndex) : new ArrayList<>();
-            
-            response.put("code", 200);
-            response.put("data", pageData);
-            response.put("total", total);
-            response.put("pageNum", pageNum);
-            response.put("pageCount", pageCount);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("获取任务列表失败", e);
-            response.put("code", 500);
-            response.put("message", "获取任务列表失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+    private final JobService jobService;
+    
+    public JobController(JobService jobService) {
+        this.jobService = jobService;
     }
     
     /**
-     * 执行任务
+     * Get paginated list of jobs from all schedulers
+     * @param page page number (0-based)
+     * @param size items per page
+     * @param schedulerName optional scheduler name filter
+     * @param groupName optional group name filter
+     * @return paginated job list
      */
-    @PostMapping("/start")
-    public ResponseEntity<Map<String, Object>> start(@RequestParam("uuid") String uuid) {
-        Map<String, Object> response = new HashMap<>();
+    @GetMapping
+    public PageResult<JobInfo> getJobs(
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            @RequestParam(required = false) String schedulerName,
+            @RequestParam(required = false) String groupName) {
         
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            Job job = JobContainer.getJobById(uuid);
-            
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            instance.getJmxAdapter().startJobNow(instance,
-                    instance.getSchedulerByName(job.getSchedulerName()), job);
-            
-            response.put("code", 200);
-            response.put("message", "执行成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("执行任务失败", e);
-            response.put("code", 500);
-            response.put("message", "执行任务失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.debug("Getting jobs - page: {}, size: {}, scheduler: {}, group: {}", 
+                     page, size, schedulerName, groupName);
+        
+        return jobService.getJobs(page, size, schedulerName, groupName);
     }
     
     /**
-     * 删除任务
+     * Get job details by job key
+     * @param schedulerName scheduler name
+     * @param jobName job name
+     * @param jobGroup job group
+     * @return job details
      */
-    @DeleteMapping("/delete")
-    public ResponseEntity<Map<String, Object>> delete(@RequestParam("uuid") String uuid) {
-        Map<String, Object> response = new HashMap<>();
+    @GetMapping("/{schedulerName}/{jobGroup}/{jobName}")
+    public JobDetailResponse getJobDetail(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName) {
         
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            Job job = JobContainer.getJobById(uuid);
-            
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            JobContainer.removeJobById(uuid);
-            log.info("delete a quartz job!");
-            instance.getJmxAdapter().deleteJob(instance,
-                    instance.getSchedulerByName(job.getSchedulerName()), job);
-            
-            response.put("code", 200);
-            response.put("message", "删除成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("删除任务失败", e);
-            response.put("code", 500);
-            response.put("message", "删除任务失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.debug("Getting job details - scheduler: {}, group: {}, name: {}", 
+                     schedulerName, jobGroup, jobName);
+        
+        return jobService.getJobDetail(schedulerName, jobGroup, jobName);
     }
     
     /**
-     * 暂停任务
+     * Create a new job
+     * @param request job creation request
+     * @return created job info
      */
-    @PostMapping("/pause")
-    public ResponseEntity<Map<String, Object>> pause(@RequestParam("uuid") String uuid) {
-        Map<String, Object> response = new HashMap<>();
+    @PostMapping
+    public JobInfo createJob(@RequestBody @Valid CreateJobRequest request) {
+        logger.info("Creating job - scheduler: {}, group: {}, name: {}", 
+                    request.getSchedulerName(), request.getJobGroup(), request.getJobName());
         
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            Job job = JobContainer.getJobById(uuid);
-            
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            log.info("pause a quartz job!");
-            instance.getJmxAdapter().pauseJob(instance,
-                    instance.getSchedulerByName(job.getSchedulerName()), job);
-            
-            response.put("code", 200);
-            response.put("message", "任务已暂停");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("暂停任务失败", e);
-            response.put("code", 500);
-            response.put("message", "暂停任务失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        return jobService.createJob(request);
     }
     
     /**
-     * 恢复任务
+     * Update an existing job
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
+     * @param request update request
+     * @return updated job info
      */
-    @PostMapping("/resume")
-    public ResponseEntity<Map<String, Object>> resume(@RequestParam("uuid") String uuid) {
-        Map<String, Object> response = new HashMap<>();
+    @PutMapping("/{schedulerName}/{jobGroup}/{jobName}")
+    public JobInfo updateJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName,
+            @RequestBody @Valid UpdateJobRequest request) {
         
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            Job job = JobContainer.getJobById(uuid);
-            
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务不存在");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            log.info("resume a quartz job!");
-            instance.getJmxAdapter().resumeJob(instance,
-                    instance.getSchedulerByName(job.getSchedulerName()), job);
-            
-            response.put("code", 200);
-            response.put("message", "任务已恢复");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("恢复任务失败", e);
-            response.put("code", 500);
-            response.put("message", "恢复任务失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.info("Updating job - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, jobGroup, jobName);
+        
+        return jobService.updateJob(schedulerName, jobGroup, jobName, request);
     }
     
     /**
-     * 获取可用的调度器列表
+     * Delete a job
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
      */
-    @GetMapping("/types")
-    public ResponseEntity<Map<String, Object>> getJobTypes() {
-        Map<String, Object> response = new HashMap<>();
+    @DeleteMapping("/{schedulerName}/{jobGroup}/{jobName}")
+    public void deleteJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName) {
         
-        try {
-            Map<String, Job> jobMap = JobContainer.getJobMap();
-            Set<String> schedulerNames = new HashSet<>();
-            
-            for (Map.Entry<String, Job> entry : jobMap.entrySet()) {
-                schedulerNames.add(entry.getValue().getSchedulerName());
-            }
-            
-            response.put("code", 200);
-            response.put("data", Map.of(
-                "schedulers", schedulerNames,
-                "jobs", jobMap
-            ));
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("获取调度器列表失败", e);
-            response.put("code", 500);
-            response.put("message", "获取调度器列表失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.info("Deleting job - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, jobGroup, jobName);
+        
+        jobService.deleteJob(schedulerName, jobGroup, jobName);
     }
     
     /**
-     * 添加任务
+     * Pause a job
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
      */
-    @PostMapping("/add")
-    public ResponseEntity<Map<String, Object>> add(@RequestBody Job job) {
-        Map<String, Object> response = new HashMap<>();
+    @PostMapping("/{schedulerName}/{jobGroup}/{jobName}/pause")
+    public void pauseJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName) {
         
-        try {
-            QuartzInstance instance = QuartzInstanceContainer.getAllQuartzInstance().isEmpty() ? 
-                null : QuartzInstanceContainer.getAllQuartzInstance().get(0);
-            
-            if (job == null) {
-                response.put("code", 400);
-                response.put("message", "任务参数不能为空");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
-            }
-            
-            Map<String, Object> map = new HashMap<>();
-            map.put("name", job.getJobName());
-            map.put("group", job.getGroup());
-            map.put("description", job.getDescription());
-            map.put("jobClass", JobContainer.getJobById(job.getJobClass()).getJobClass());
-            map.put("durability", true);
-            map.put("jobDetailClass", "org.quartz.impl.JobDetailImpl");
-            
-            instance.getJmxAdapter().addJob(instance,
-                    instance.getSchedulerByName(job.getSchedulerName()), map);
-            log.info("add job successfully!");
-            
-            response.put("code", 200);
-            response.put("message", "添加成功");
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("添加任务失败", e);
-            response.put("code", 500);
-            response.put("message", "添加任务失败: " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
-        }
+        logger.info("Pausing job - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, jobGroup, jobName);
+        
+        jobService.pauseJob(schedulerName, jobGroup, jobName);
+    }
+    
+    /**
+     * Resume a paused job
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
+     */
+    @PostMapping("/{schedulerName}/{jobGroup}/{jobName}/resume")
+    public void resumeJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName) {
+        
+        logger.info("Resuming job - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, jobGroup, jobName);
+        
+        jobService.resumeJob(schedulerName, jobGroup, jobName);
+    }
+    
+    /**
+     * Trigger a job immediately
+     * @param schedulerName scheduler name
+     * @param jobGroup job group
+     * @param jobName job name
+     */
+    @PostMapping("/{schedulerName}/{jobGroup}/{jobName}/trigger")
+    public void triggerJob(
+            @PathVariable @NotBlank String schedulerName,
+            @PathVariable @NotBlank String jobGroup,
+            @PathVariable @NotBlank String jobName) {
+        
+        logger.info("Triggering job - scheduler: {}, group: {}, name: {}", 
+                    schedulerName, jobGroup, jobName);
+        
+        jobService.triggerJob(schedulerName, jobGroup, jobName);
     }
 } 

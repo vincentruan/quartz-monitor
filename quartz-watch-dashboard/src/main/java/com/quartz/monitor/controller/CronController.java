@@ -9,6 +9,7 @@ import java.util.TreeSet;
 
 import javax.validation.Valid;
 
+import org.apache.commons.lang3.time.DateFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -18,11 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.quartz.monitor.core.CronExpressionParser;
-import com.quartz.monitor.dto.CronData;
-import com.quartz.monitor.dto.CronGenerateRequest;
-import com.quartz.monitor.dto.CronParseRequest;
-import com.quartz.monitor.dto.CronResponse;
-import com.quartz.monitor.util.DateFormateUtil;
+import com.quartz.monitor.dto.request.CronGenerateRequest;
+import com.quartz.monitor.dto.request.CronParseRequest;
+import com.quartz.monitor.dto.response.CronData;
+import com.quartz.monitor.dto.response.CronResponse;
 
 @RestController
 @RequestMapping("/api/json")
@@ -62,13 +62,13 @@ public class CronController {
                 dd = calendar.getTime();
             }
             
-            data.setStartDate(DateFormateUtil.format("yyyy-MM-dd HH:mm:ss", dd));
+            data.setStartDate(DateFormatUtils.format(dd, "yyyy-MM-dd HH:mm:ss"));
             
             List<String> schedulerNextResults = new ArrayList<>();
             for (int i = 1; i <= 8; i++) {
                 try {
                     dd = exp.getNextValidTimeAfter(dd);
-                    schedulerNextResults.add(DateFormateUtil.format("yyyy-MM-dd HH:mm:ss", dd));
+                    schedulerNextResults.add(DateFormatUtils.format(dd, "yyyy-MM-dd HH:mm:ss"));
                     dd = new Date(dd.getTime() + 1000);
                 } catch (Exception e) {
                     schedulerNextResults.add("");
@@ -163,12 +163,12 @@ public class CronController {
             Date dd = new Date();
             CronData data = new CronData();
             data.setCronExpression(cronExpression);
-            data.setStartDate(DateFormateUtil.format("yyyy-MM-dd HH:mm:ss", dd));
+            data.setStartDate(DateFormatUtils.format(dd, "yyyy-MM-dd HH:mm:ss"));
             
             List<String> schedulerNextResults = new ArrayList<>();
             for (int i = 1; i <= 8; i++) {
                 dd = exp.getNextValidTimeAfter(dd);
-                schedulerNextResults.add(DateFormateUtil.format("yyyy-MM-dd HH:mm:ss", dd));
+                schedulerNextResults.add(DateFormatUtils.format(dd, "yyyy-MM-dd HH:mm:ss"));
                 dd = new Date(dd.getTime() + 1000);
             }
             data.setSchedulerNextResults(schedulerNextResults);
