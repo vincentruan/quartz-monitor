@@ -1,5 +1,5 @@
 /doc
-/target/
+/**/target/
 
 ### Java template
 # Compiled class file
@@ -333,3 +333,5 @@ dist/
 npm-debug.log
 yarn-error.log
 
+.DS_Store
+**/.DS_Store
