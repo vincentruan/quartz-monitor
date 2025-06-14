@@ -17,8 +17,14 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.SchedulerMetaData;
 import org.quartz.impl.SchedulerRepository;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
 
 import com.quartz.monitor.exception.SchedulerNotFoundException;
 
@@ -39,22 +45,38 @@ class SchedulerServiceTest {
     
     @Mock
     private SchedulerRepository schedulerRepository;
+
+    @Mock
+    private NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    @Mock
+    private SchedulerMetaData schedulerMetaData;
     
     @InjectMocks
     private SchedulerService schedulerService;
+
+    private static final String TEST_SCHEDULER_NAME = "testScheduler";
     
     @BeforeEach
     void setUp() throws SchedulerException {
-        // Setup default scheduler
+        // Common setup for schedulers
         when(defaultScheduler.getSchedulerName()).thenReturn("defaultScheduler");
-        when(defaultScheduler.isStarted()).thenReturn(true);
-        
-        // Setup additional schedulers
-        when(scheduler1.getSchedulerName()).thenReturn("scheduler1");
-        when(scheduler1.isStarted()).thenReturn(true);
+        lenient().when(defaultScheduler.isStarted()).thenReturn(true); // Use lenient for flexibility
+        lenient().when(defaultScheduler.getMetaData()).thenReturn(schedulerMetaData);
+
+
+        when(scheduler1.getSchedulerName()).thenReturn(TEST_SCHEDULER_NAME);
+        lenient().when(scheduler1.isStarted()).thenReturn(true);
+        lenient().when(scheduler1.getMetaData()).thenReturn(schedulerMetaData);
         
         when(scheduler2.getSchedulerName()).thenReturn("scheduler2");
-        when(scheduler2.isStarted()).thenReturn(false);
+        lenient().when(scheduler2.isStarted()).thenReturn(false);
+        lenient().when(scheduler2.getMetaData()).thenReturn(schedulerMetaData);
+
+        // Ensure SchedulerService is created with the mock jdbcTemplate if @InjectMocks doesn't cover it due to constructor changes
+        // This might be needed if the test runner doesn't re-initialize schedulerService with all mocks post-constructor update
+        schedulerService = new SchedulerService(Arrays.asList(scheduler1, scheduler2, defaultScheduler), defaultScheduler, namedParameterJdbcTemplate);
+
     }
     
     @Test
@@ -220,4 +242,155 @@ class SchedulerServiceTest {
             assertTrue(result.contains(defaultScheduler));
         }
     }
-} 
+
+    // --- Tests for getActiveInstanceCount ---
+
+    @Test
+    void testGetActiveInstanceCount_Clustered_MultipleInstances() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(true);
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(Map.class), eq(Integer.class)))
+            .thenReturn(3);
+
+        // Mock SchedulerRepository to return the scheduler1 which has TEST_SCHEDULER_NAME
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(3, count);
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_Clustered_OneInstance() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(true);
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(Map.class), eq(Integer.class)))
+            .thenReturn(1);
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(1, count);
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_Clustered_NoInstances() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(true);
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(Map.class), eq(Integer.class)))
+            .thenReturn(0);
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(0, count);
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_NonClustered_Started() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(false);
+        when(scheduler1.isStarted()).thenReturn(true); // scheduler1 is TEST_SCHEDULER_NAME
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(1, count);
+            verify(namedParameterJdbcTemplate, never()).queryForObject(any(String.class), any(Map.class), eq(Integer.class));
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_NonClustered_NotStarted() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(false);
+        when(scheduler1.isStarted()).thenReturn(false); // scheduler1 is TEST_SCHEDULER_NAME
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(0, count);
+            verify(namedParameterJdbcTemplate, never()).queryForObject(any(String.class), any(Map.class), eq(Integer.class));
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_JdbcTemplateThrowsException() throws SchedulerException {
+        // Arrange
+        when(schedulerMetaData.isJobStoreClustered()).thenReturn(true);
+        when(namedParameterJdbcTemplate.queryForObject(any(String.class), any(Map.class), eq(Integer.class)))
+            .thenThrow(new DataAccessException("DB error") {});
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act
+            int count = schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+
+            // Assert
+            assertEquals(0, count); // As per current implementation, logs error and returns 0
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_SchedulerNotFound() {
+        // Arrange
+        String nonExistentSchedulerName = "nonExistentScheduler";
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(nonExistentSchedulerName)).thenReturn(null);
+             // Ensure schedulers list in service doesn't contain it either
+            ReflectionTestUtils.setField(schedulerService, "schedulers", Collections.emptyList());
+
+
+            // Act & Assert
+            assertThrows(SchedulerNotFoundException.class, () -> {
+                schedulerService.getActiveInstanceCount(nonExistentSchedulerName);
+            });
+        }
+    }
+
+    @Test
+    void testGetActiveInstanceCount_SchedulerMetaDataThrowsException() throws SchedulerException {
+        // Arrange
+        when(scheduler1.getMetaData()).thenThrow(new SchedulerException("Meta error"));
+
+        try (MockedStatic<SchedulerRepository> mockedStatic = mockStatic(SchedulerRepository.class)) {
+            mockedStatic.when(SchedulerRepository::getInstance).thenReturn(schedulerRepository);
+            when(schedulerRepository.lookup(TEST_SCHEDULER_NAME)).thenReturn(scheduler1);
+
+            // Act & Assert
+            assertThrows(SchedulerNotFoundException.class, () -> { // As per current error handling
+                schedulerService.getActiveInstanceCount(TEST_SCHEDULER_NAME);
+            });
+        }
+    }
+}

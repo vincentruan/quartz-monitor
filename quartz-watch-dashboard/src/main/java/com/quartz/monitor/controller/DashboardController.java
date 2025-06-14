@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
-import org.quartz.Scheduler;
+// Import SchedulerService instead of Scheduler
+import com.quartz.monitor.service.SchedulerService;
+import org.quartz.Scheduler; // Keep for method signatures if needed, or specific instances
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
 import org.quartz.Trigger.TriggerState;
@@ -40,9 +42,10 @@ public class DashboardController {
     private static final Logger logger = LoggerFactory.getLogger(DashboardController.class);
     
     private static final int MAX_RECENT_JOBS = 10;
+    private static final String PRIMARY_SCHEDULER_NAME = "QuartzMonitorScheduler"; // As defined in QuartzConfig
     
     @Autowired
-    private Scheduler scheduler;
+    private SchedulerService schedulerService; // Autowire SchedulerService
     
     /**
      * Get system statistics including instance, scheduler, job, and trigger counts
@@ -53,13 +56,16 @@ public class DashboardController {
         logger.debug("Fetching dashboard statistics using Spring Boot Quartz");
         
         try {
-            // Instance count - in Spring Boot typically we have one instance
-            int instanceCount = scheduler.getSchedulerName() != null ? 1 : 0;
+            // Get the primary scheduler instance
+            Scheduler scheduler = schedulerService.getSchedulerByName(PRIMARY_SCHEDULER_NAME);
+
+            // Instance count - get from new service method for cluster awareness
+            int instanceCount = schedulerService.getActiveInstanceCount(PRIMARY_SCHEDULER_NAME);
             
-            // Scheduler count - in Spring Boot typically we have one scheduler
+            // Scheduler count - focusing on one logical clustered scheduler
             int schedulerCount = scheduler.isStarted() ? 1 : 0;
             
-            // Job count - get all job keys from all groups
+            // Job count - get all job keys from all groups (reflects shared DB)
             int jobCount = 0;
             List<String> jobGroupNames = scheduler.getJobGroupNames();
             for (String groupName : jobGroupNames) {
@@ -68,7 +74,7 @@ public class DashboardController {
             }
             logger.debug("Found {} jobs", jobCount);
             
-            // Trigger count - get all trigger keys from all groups
+            // Trigger count - get all trigger keys from all groups (reflects shared DB)
             int triggerCount = 0;
             List<String> triggerGroupNames = scheduler.getTriggerGroupNames();
             for (String groupName : triggerGroupNames) {
@@ -77,7 +83,7 @@ public class DashboardController {
             }
             logger.debug("Found {} triggers", triggerCount);
             
-            // Running job count - get currently executing jobs
+            // Running job count - get currently executing jobs (reflects shared DB)
             List<JobExecutionContext> currentlyExecutingJobs = scheduler.getCurrentlyExecutingJobs();
             int runningJobCount = currentlyExecutingJobs.size();
             logger.debug("Found {} running jobs", runningJobCount);
@@ -104,6 +110,9 @@ public class DashboardController {
         logger.debug("Fetching recent jobs using Spring Boot Quartz");
         
         try {
+            // Get the primary scheduler instance
+            Scheduler scheduler = schedulerService.getSchedulerByName(PRIMARY_SCHEDULER_NAME);
+
             List<Job> allJobs = new ArrayList<>();
             
             // Get all job groups

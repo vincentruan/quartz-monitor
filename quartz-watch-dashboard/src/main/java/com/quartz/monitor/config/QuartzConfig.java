@@ -33,7 +33,10 @@ public class QuartzConfig {
         properties.setProperty("org.quartz.scheduler.instanceName", "QuartzMonitorScheduler");
         properties.setProperty("org.quartz.scheduler.instanceId", "AUTO");
         properties.setProperty("org.quartz.threadPool.threadCount", "10");
+        properties.setProperty("org.quartz.jobStore.driverDelegateClass", "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
         properties.setProperty("org.quartz.jobStore.isClustered", "true");
+        properties.setProperty("org.quartz.jobStore.useProperties", "false");
+        properties.setProperty("org.quartz.jobStore.tablePrefix", "QRTZ_");
         properties.setProperty("org.quartz.jobStore.clusterCheckinInterval", "20000");
         
         factory.setQuartzProperties(properties);
